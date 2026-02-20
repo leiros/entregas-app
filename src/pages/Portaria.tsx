@@ -56,10 +56,26 @@ export default function Portaria() {
   const [deliverOpen, setDeliverOpen] = useState<string | null>(null);
   const [selectedTower, setSelectedTower] = useState('');
   const [selectedApt, setSelectedApt] = useState('');
+  const [receivedByName, setReceivedByName] = useState('');
   const filteredApts = APARTMENTS.filter(a => a.towerId === selectedTower);
 
+  const openDeliverDialog = (pkg: typeof portariaPackages[0]) => {
+    setDeliverOpen(pkg.id);
+    if (pkg.apartmentId) {
+      const apt = APARTMENTS.find(a => a.id === pkg.apartmentId);
+      if (apt) {
+        setSelectedTower(apt.towerId);
+        setSelectedApt(apt.id);
+      }
+    } else {
+      setSelectedTower('');
+      setSelectedApt('');
+    }
+    setReceivedByName('');
+  };
+
   const deliverDirect = (id: string) => {
-    if (!selectedApt) return;
+    if (!selectedApt || !receivedByName) return;
     updatePackageStatus(id, 'entregue', {
       apartmentId: selectedApt,
       sentToAdminAt: new Date().toISOString(),
@@ -67,8 +83,8 @@ export default function Portaria() {
       deliveredAt: new Date().toISOString(),
       deliveredBy: currentUser.name,
     });
-    toast({ title: 'Entregue ao morador', description: getApartmentLabel(selectedApt) });
-    setDeliverOpen(null); setSelectedTower(''); setSelectedApt('');
+    toast({ title: 'Entregue ao morador', description: `${getApartmentLabel(selectedApt)} · Recebido por: ${receivedByName}` });
+    setDeliverOpen(null); setSelectedTower(''); setSelectedApt(''); setReceivedByName('');
   };
 
   return (
@@ -117,9 +133,9 @@ export default function Portaria() {
                   <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => sendToAdmin(pkg.id)}>
                     <Send className="w-3 h-3" /> Enviar p/ Adm
                   </Button>
-                  <Dialog open={deliverOpen === pkg.id} onOpenChange={v => { setDeliverOpen(v ? pkg.id : null); if (!v) { setSelectedTower(''); setSelectedApt(''); } }}>
+                  <Dialog open={deliverOpen === pkg.id} onOpenChange={v => { if (!v) { setDeliverOpen(null); setSelectedTower(''); setSelectedApt(''); setReceivedByName(''); } }}>
                     <DialogTrigger asChild>
-                      <Button size="sm" className="gap-1.5 text-xs"><Truck className="w-3 h-3" /> Entregar</Button>
+                      <Button size="sm" className="gap-1.5 text-xs" onClick={() => openDeliverDialog(pkg)}><Truck className="w-3 h-3" /> Entregar</Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader><DialogTitle>Entregar ao Morador</DialogTitle></DialogHeader>
@@ -138,7 +154,8 @@ export default function Portaria() {
                             </SelectContent>
                           </Select>
                         )}
-                        <Button onClick={() => deliverDirect(pkg.id)} className="w-full" disabled={!selectedApt}>Confirmar Entrega</Button>
+                        <Input placeholder="Recebido por:" value={receivedByName} onChange={e => setReceivedByName(e.target.value)} />
+                        <Button onClick={() => deliverDirect(pkg.id)} className="w-full" disabled={!selectedApt || !receivedByName}>Confirmar Entrega</Button>
                       </div>
                     </DialogContent>
                   </Dialog>

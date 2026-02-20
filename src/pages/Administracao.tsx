@@ -4,6 +4,7 @@ import { TOWERS, APARTMENTS, getApartmentLabel } from '@/data/mockData';
 import StatusBadge from '@/components/StatusBadge';
 import StatCard from '@/components/StatCard';
 import { Package, CalendarDays, Building2, CheckCircle2, TrendingUp, Bell, Truck } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,7 +29,22 @@ export default function Administracao() {
   const [notifyOpen, setNotifyOpen] = useState<string | null>(null);
   const [selectedTower, setSelectedTower] = useState('');
   const [selectedApt, setSelectedApt] = useState('');
+  const [receivedByName, setReceivedByName] = useState('');
   const filteredApts = APARTMENTS.filter(a => a.towerId === selectedTower);
+
+  const openNotifyDialog = (pkg: typeof adminPackages[0]) => {
+    setNotifyOpen(pkg.id);
+    if (pkg.apartmentId) {
+      const apt = APARTMENTS.find(a => a.id === pkg.apartmentId);
+      if (apt) {
+        setSelectedTower(apt.towerId);
+        setSelectedApt(apt.id);
+      }
+    } else {
+      setSelectedTower('');
+      setSelectedApt('');
+    }
+  };
 
   const notifyResident = (id: string) => {
     if (!selectedApt) return;
@@ -46,11 +62,16 @@ export default function Administracao() {
   };
 
   const deliverToResident = (id: string) => {
+    if (!receivedByName) {
+      toast({ title: 'Preencha o campo "Recebido por:"', variant: 'destructive' });
+      return;
+    }
     updatePackageStatus(id, 'entregue', {
       deliveredAt: new Date().toISOString(),
       deliveredBy: currentUser.name,
     });
-    toast({ title: 'Encomenda entregue ao morador!' });
+    toast({ title: 'Encomenda entregue ao morador!', description: `Recebido por: ${receivedByName}` });
+    setReceivedByName('');
   };
 
   return (
@@ -78,9 +99,9 @@ export default function Administracao() {
                   <p className="font-mono text-sm font-medium">{pkg.trackingCode}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{pkg.sender} · {getApartmentLabel(pkg.apartmentId)}</p>
                 </div>
-                <Dialog open={notifyOpen === pkg.id} onOpenChange={v => { setNotifyOpen(v ? pkg.id : null); if (!v) { setSelectedTower(''); setSelectedApt(''); } }}>
+                <Dialog open={notifyOpen === pkg.id} onOpenChange={v => { if (!v) { setNotifyOpen(null); setSelectedTower(''); setSelectedApt(''); } }}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="gap-1.5 text-xs"><Bell className="w-3 h-3" /> Avisar Morador</Button>
+                    <Button size="sm" className="gap-1.5 text-xs" onClick={() => openNotifyDialog(pkg)}><Bell className="w-3 h-3" /> Avisar Morador</Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader><DialogTitle>Notificar Morador via WhatsApp</DialogTitle></DialogHeader>
@@ -133,9 +154,12 @@ export default function Administracao() {
                   <p className="text-xs text-muted-foreground mt-0.5">{pkg.sender} · {getApartmentLabel(pkg.apartmentId)}</p>
                   <p className="text-xs text-muted-foreground">Notificado em {pkg.notifiedAt ? new Date(pkg.notifiedAt).toLocaleString('pt-BR') : '—'}</p>
                 </div>
-                <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => deliverToResident(pkg.id)}>
-                  <Truck className="w-3 h-3" /> Entregar ao Morador
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Input placeholder="Recebido por:" value={receivedByName} onChange={e => setReceivedByName(e.target.value)} className="w-40 h-8 text-xs" />
+                  <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => deliverToResident(pkg.id)}>
+                    <Truck className="w-3 h-3" /> Entregar
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
